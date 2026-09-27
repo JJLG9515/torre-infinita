@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
+    <!-- ========================================== -->
+    <!-- PROPIEDAD INTELECTUAL Y DERECHOS DE AUTOR  -->
+    <!-- Autor: Jose de Jesus Lopez Gonzalez        -->
+    <!-- GitHub: JJLG9515                           -->
+    <!-- © 2024 Jose de Jesus Lopez Gonzalez.       -->
+    <!-- Todos los derechos reservados.             -->
+    <!-- ========================================== -->
+    
+    <meta name="author" content="Jose de Jesus Lopez Gonzalez">
+    <meta name="copyright" content="© 2024 Jose de Jesus Lopez Gonzalez. Todos los derechos reservados.">
+    
+    <title>Torre Infinita - Por Jose de Jesus Lopez Gonzalez</title>
+    
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0;
+            overflow: hidden; 
+            background-color: #1a1a2e; 
+            font-family: 'Arial', sans-serif;
+            touch-action: none;
+        }
+        canvas { 
+            display: block; 
+            margin: 0 auto; 
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            box-shadow: 0 0 30px rgba(0,0,0,0.8);
+        }
+        #ui {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: white;
+            pointer-events: none;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        h1 { margin: 0; font-size: 24px; color: #00d2ff; }
+        #score { font-size: 36px; font-weight: bold; margin: 5px 0; }
+        #perfect { color: #ffeb3b; font-size: 20px; font-weight: bold; opacity: 0; transition: opacity 0.3s; }
+    </style>
+</head>
+<body>
+    <div id="ui">
+        <h1>TORRE INFINITA</h1>
+        <div id="score">0</div>
+        <div id="perfect">¡PERFECTO! +5</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+
+    <script>
+        // @ts-nocheck
+        /* 
+         * =========================================================
+         * TORRE INFINITA 
+         * Código propiedad intelectual de Jose de Jesus Lopez Gonzalez
+         * GitHub: JJLG9515
+         * © 2024. Todos los derechos reservados.
+         * Prohibida su copia, distribución o uso sin autorización.
+         * =========================================================
+         */
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreEl = document.getElementById('score');
+        const perfectEl = document.getElementById('perfect');
+
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const BLOCK_HEIGHT = 40;
+        let tower = [];
+        let currentBlock = null;
+        let score = 0;
+        let gameOver = false;
+        let cameraY = 0;
+        let speed = 4;
+        let perfectTimer = 0;
+
+        function getRandomColor() {
+            const hue = Math.random() * 360;
+            return `hsl(${hue}, 80%, 60%)`;
+        }
+
+        function init() {
+            tower = [{ x: canvas.width / 2 - 100, width: 200, color: getRandomColor() }];
+            score = 0;
+            scoreEl.innerText = score;
+            gameOver = false;
+            cameraY = 0;
+            speed = 4;
+            perfectEl.style.opacity = 0;
+            spawnBlock();
+            loop();
+        }
+
+        function spawnBlock() {
+            const prevBlock = tower[tower.length - 1];
+            currentBlock = {
+                x: 0,
+                width: prevBlock.width,
+                color: getRandomColor(),
+                direction: 1
+            };
+            if (Math.random() > 0.5) {
+                currentBlock.x = 0;
+                currentBlock.direction = 1;
+            } else {
+                currentBlock.x = canvas.width - currentBlock.width;
+                currentBlock.direction = -1;
+            }
+        }
+
+        function dropBlock() {
+            if (gameOver || !currentBlock) return;
+
+            const prevBlock = tower[tower.length - 1];
+            const overlapLeft = Math.max(currentBlock.x, prevBlock.x);
+            const overlapRight = Math.min(currentBlock.x + currentBlock.width, prevBlock.x + prevBlock.width);
+            const overlapWidth = overlapRight - overlapLeft;
+
+            if (overlapWidth > 0) {
+                const isPerfect = Math.abs(overlapWidth - prevBlock.width) < 3;
+                
+                if (isPerfect) {
+                    tower.push({ x: prevBlock.x, width: prevBlock.width, color: currentBlock.color });
+                    score += 5;
+                    perfectEl.style.opacity = 1;
+                    perfectTimer = 30;
+                } else {
+                    tower.push({ x: overlapLeft, width: overlapWidth, color: currentBlock.color });
+                    score += 1;
+                }
+                
+                scoreEl.innerText = score;
+                speed += 0.2;
+                
+                if (tower.length * BLOCK_HEIGHT > canvas.height - 200) {
+                    cameraY = (tower.length * BLOCK_HEIGHT) - (canvas.height - 200);
+                }
+
+                spawnBlock();
+            } else {
+                gameOver = true;
+            }
+        }
+
+        function update() {
+            if (gameOver || !currentBlock) return;
+
+            currentBlock.x += speed * currentBlock.direction;
+            
+            if (currentBlock.x <= 0 || currentBlock.x + currentBlock.width >= canvas.width) {
+                currentBlock.direction *= -1;
+            }
+
+            if (perfectTimer > 0) {
+                perfectTimer--;
+                if (perfectTimer <= 0) perfectEl.style.opacity = 0;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            tower.forEach((block, i) => {
+                const y = canvas.height - (i + 1) * BLOCK_HEIGHT + cameraY;
+                if (y > -BLOCK_HEIGHT && y < canvas.height) {
+                    ctx.fillStyle = block.color;
+                    ctx.fillRect(block.x, y, block.width, BLOCK_HEIGHT - 2);
+                    
+                    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+                    ctx.fillRect(block.x, y, block.width, 5);
+                }
+            });
+
+            if (!gameOver && currentBlock) {
+                const y = canvas.height - (tower.length + 1) * BLOCK_HEIGHT + cameraY;
+                ctx.fillStyle = currentBlock.color;
+                ctx.fillRect(currentBlock.x, y, currentBlock.width, BLOCK_HEIGHT - 2);
+                ctx.fillStyle = 'rgba(255,255,255,0.3)';
+                ctx.fillRect(currentBlock.x, y, currentBlock.width, 5);
+            }
+
+            if (gameOver) {
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 40px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText('GAME OVER', canvas.width / 2, canvas.height / 2 - 40);
+                ctx.font = '24px Arial';
+                ctx.fillText('Puntos: ' + score, canvas.width / 2, canvas.height / 2 + 10);
+                ctx.fillStyle = '#00d2ff';
+                ctx.font = '20px Arial';
+                ctx.fillText('Toca para reiniciar', canvas.width / 2, canvas.height / 2 + 60);
+            }
+
+            // =======================================================
+            // FIRMA DIGITAL VISIBLE (MARCA DE AGUA) EN EL JUEGO
+            // =======================================================
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)'; // Color blanco semitransparente
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('© Jose de Jesus Lopez Gonzalez | GitHub: JJLG9515', canvas.width / 2, canvas.height - 15);
+            
+            // Restaurar alineación por defecto para evitar errores visuales
+            ctx.textAlign = 'left';
+        }
+
+        function loop() {
+            update();
+            draw();
+            if (!gameOver) requestAnimationFrame(loop);
+        }
+
+        function handleInput(e) {
+            e.preventDefault();
+            if (gameOver) {
+                init();
+            } else {
+                dropBlock();
+            }
+        }
+
+        canvas.addEventListener('touchstart', handleInput, { passive: false });
+        canvas.addEventListener('mousedown', handleInput);
+
+        init();
+    </script>
+</body>
+</html>
